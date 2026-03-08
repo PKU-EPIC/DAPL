@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Emerging Extrinsic Dexterity in Cluttered Scenes via Dynamics-aware Policy Learning">
+  <meta name="keywords" content="Policy Learning, Cluttered Scenes">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DAPL</title>
+
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+      },
+    };
+  </script>
+  <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="stylesheet" href="./static/css/misc.css">
+
+  <style>
+    :root {
+      --text-main: #1f2937;
+      --text-subtle: #4b5563;
+      --card-border: #dde3ee;
+      --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+      --card-shadow-hover: 0 6px 18px rgba(15, 23, 42, 0.08);
+      --accent: #1d4ed8;
+    }
+
+    .dapl-heading {
+      font-size: 2.1rem;
+    }
+
+    .demo-video-box {
+      width: 100%;
+      max-width: min(96vw, 1400px);
+      margin: 0 auto;
+      padding: 2.5rem 2rem;
+    }
+
+    .performance-demo-caption,
+    .performance-demo-heading {
+      max-width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .performance-demo-caption {
+      margin-top: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .performance-demo-heading {
+      margin-top: 1.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .performance-demo-heading:last-of-type {
+      margin-top: 2rem;
+    }
+
+    .demo-video-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .demo-video-controls--narrow {
+      width: 100%;
+      max-width: min(92vw, 760px);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .demo-video-controls--narrow .field {
+      justify-content: center;
+    }
+
+    .demo-video-controls--narrow .control {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .sim-policy-dropdown {
+      min-width: 240px;
+    }
+
+    .sim-policy-dropdown .dropdown-trigger {
+      width: 100%;
+    }
+
+    .sim-policy-dropdown .dropdown-trigger .button {
+      width: 100%;
+      min-width: 240px;
+      justify-content: center;
+      padding-left: 2.5em;
+      padding-right: 2.5em;
+      position: relative;
+    }
+
+    .sim-policy-dropdown .dropdown-trigger .button .icon {
+      position: absolute;
+      right: 1em;
+    }
+
+    .sim-policy-dropdown .dropdown-menu {
+      width: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .sim-policy-dropdown .dropdown-content,
+    .sim-policy-dropdown .dropdown-item {
+      text-align: center;
+    }
+
+    .sim-policy-dropdown .dropdown-item {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding-left: 2.25rem;
+    }
+
+    .demo-video-controls .field {
+      margin-bottom: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      min-width: 180px;
+    }
+
+    .demo-video-matrix {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .demo-method-card {
+      border-radius: 0.75rem;
+      border: 1px solid #dbdbdb;
+      background-color: #fff;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      min-height: 220px;
+      min-width: 0;
+    }
+
+    .demo-method-card.box {
+      margin-bottom: 0 !important;
+    }
+
+    .demo-method-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.25rem;
+      text-align: center;
+    }
+
+    body {
+      font-size: 17px;
+      line-height: 1.65;
+      color: var(--text-main);
+      background: #f8fafc;
+    }
+
+    .content,
+    .hero-body {
+      color: var(--text-main);
+    }
+
+    .hero .hero-body {
+      padding-top: 2.85rem;
+      padding-bottom: 2.85rem;
+    }
+
+    .hero+.hero {
+      border-top: 1px solid #e8edf5;
+    }
+
+    .title.publication-title {
+      font-size: 2.45rem;
+      letter-spacing: -0.015em;
+    }
+
+    .title.is-3 {
+      font-size: 2rem;
+      letter-spacing: -0.01em;
+    }
+
+    .title.is-4 {
+      font-size: 1.55rem;
+    }
+
+    .title.is-5 {
+      font-size: 1.18rem;
+    }
+
+    .content p {
+      margin-bottom: 0.9rem;
+    }
+
+    .publication-authors {
+      color: var(--text-subtle);
+    }
+
+    .publication-authors a {
+      color: #3b82f6;
+      font-weight: 400;
+      transition: color 0.2s ease;
+    }
+
+    .publication-authors a:hover {
+      color: #2563eb;
+    }
+
+    .publication-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.25rem;
+    }
+
+    .publication-links .link-block {
+      margin: 0 !important;
+    }
+
+    .publication-links .button {
+      border: 1px solid #d9deea;
+      background: #1f2937;
+      box-shadow: 0 3px 10px rgba(31, 41, 55, 0.14);
+      transition: box-shadow 0.2s ease, background-color 0.2s ease;
+    }
+
+    .publication-links .button:hover {
+      box-shadow: 0 5px 14px rgba(31, 41, 55, 0.2);
+      background: #111827;
+    }
+
+    .box {
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      background: #ffffff;
+    }
+
+    .box:hover {
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .demo-video-box {
+      background: #ffffff;
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .demo-method-card .method-videos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+    .demo-method-card figure {
+      margin: 0;
+      min-width: 0;
+    }
+
+    .demo-method-card video {
+      width: 100%;
+      border-radius: 0.45rem;
+      background-color: #000;
+      min-width: 0;
+    }
+
+    img,
+    video {
+      border-radius: 0.45rem;
+    }
+
+    #real-video-matrix,
+    #sim-video-matrix {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .real-scene-row {
+      width: 100%;
+    }
+
+    .real-scene-row.box {
+      margin-bottom: 0 !important;
+    }
+
+    .real-scene-row-title {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin: 0.25rem 0 0.75rem;
+      text-align: center;
+    }
+
+    .real-scene-videos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .sim-scene-cell {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .video-with-badge {
+      position: relative;
+      display: block;
+    }
+
+    .video-badge-2x {
+      position: absolute;
+      left: 0.5rem;
+      bottom: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 0.2rem 0.45rem;
+      border-radius: 0.25rem;
+      pointer-events: none;
+    }
+
+    .real-video-item {
+      margin: 0;
+      min-width: 0;
+    }
+
+    .real-video-item video {
+      width: 100%;
+      border-radius: 0.45rem;
+      background-color: #000;
+      min-width: 0;
+      display: block;
+    }
+
+    video::-webkit-media-controls-mute-button,
+    video::-webkit-media-controls-volume-slider,
+    video::-webkit-media-controls-volume-control-container {
+      display: none !important;
+    }
+
+    #world-model-prediction-video::-webkit-media-controls-timeline,
+    #world-model-prediction-video::-webkit-media-controls-current-time-display,
+    #world-model-prediction-video::-webkit-media-controls-time-remaining-display {
+      display: none !important;
+    }
+
+    @media (max-width: 1024px) {
+      .demo-video-controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .demo-video-controls .field {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .demo-video-controls--narrow {
+        align-items: center;
+      }
+
+      .demo-video-controls--narrow .field {
+        width: auto;
+        align-items: center;
+      }
+    }
+
+    .teaser-block,
+    .method-with-caption {
+      max-width: min(92vw, 1200px);
+      margin: 0 auto;
+    }
+
+    .teaser-block img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 0.45rem;
+    }
+
+    .teaser-caption {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text-subtle);
+      margin-top: 0.75rem;
+      text-align: justify;
+    }
+
+    .teaser-caption .kw-teal { color: #0f766e; font-weight: 600; }
+    .teaser-caption .kw-violet { color: #6d28d9; font-weight: 600; }
+    .teaser-caption .kw-orange { color: #c2410c; font-weight: 600; }
+    .teaser-caption .kw-blue { color: #0369a1; font-weight: 600; }
+    .teaser-caption .kw-rose { color: #b91c1c; font-weight: 600; }
+    .teaser-caption .kw-amber { color: #a21caf; font-weight: 600; }
+
+    @media (max-width: 768px) {
+      .demo-video-box {
+        padding: 1.5rem;
+      }
+
+      .publication-links .button {
+        width: 100%;
+      }
+    }
+  </style>
+
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+</head>
+
+<body>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <div class="title publication-title title-inline">
+              <span class="title-inline-main">Emerging Extrinsic Dexterity in Cluttered Scenes via Dynamics-aware Policy Learning</span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="#">Yixin Zheng</a><sup>*1,2,3</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://jiangranlv.github.io/">Jiangran Lyu</a><sup>*3,4,†</sup>,
+              </span>
+              <span class="author-block">
+                <a href="#">Yifan Zhang</a><sup>3</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://jychen18.github.io/">Jiayi Chen</a><sup>3,4</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://miyandoris.github.io/">Mi Yan</a><sup>3,4</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://michaeldyt.github.io/">Yuntian Deng</a><sup>5</sup>,
+              </span>
+              <br />
+              <span class="author-block">
+                <a href="https://scholar.google.com/citations?user=wRBbtl8AAAAJ&hl=en">Xuesong Shi</a><sup>3</sup>,
+              </span>
+              <span class="author-block">
+                <a href="#">Xiaoguang Zhao</a><sup>1</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://cfcs.pku.edu.cn/english/people/faculty/yizhouwang/index.htm">Yizhou Wang</a><sup>4</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://scholar.google.com/citations?user=X7M0I8kAAAAJ&hl=en">Zhizheng Zhang</a><sup>1,2,✉</sup>,
+              </span>
+              <span class="author-block">
+                <a href="https://hughw19.github.io/">He Wang</a><sup>1,2,✉</sup>
+              </span>
+            </div>
+
+            <div class="is-size-6 publication-authors">
+              <span class="author-block"><sup>1</sup>CASIA</span>&nbsp;&nbsp;
+              <span class="author-block"><sup>2</sup>BAAI</span>&nbsp;&nbsp;
+              <span class="author-block"><sup>3</sup>Galbot</span>&nbsp;&nbsp;
+              <span class="author-block"><sup>4</sup>Peking University</span>&nbsp;&nbsp;
+              <span class="author-block"><sup>5</sup>Shanghai Jiaotong University</span>
+            </div>
+
+            <div class="is-size-6 publication-authors">
+              <span class="author-block"><sup>*</sup>Equal contribution</span>&nbsp;&nbsp;
+              <span class="author-block"><sup>†</sup>Project Lead</span>&nbsp;&nbsp;
+              <span class="author-block">✉ Corresponding authors</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <div class="publication-links">
+
+                <span class="link-block">
+                  <a target="_blank" href="https://arxiv.org/abs/2602.04215" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                    </span>
+                    <span>arXiv</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="#" onclick="return false;" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fab fa-github"></i>
+                    </span>
+                    <span>Code (Coming Soon)</span>
+                  </a>
+                </span>
+
+                <span class="link-block">
+                  <a href="#" onclick="return false;" class="external-link button is-normal is-rounded is-dark">
+                    <span class="icon">
+                      <i class="fas fa-database"></i>
+                    </span>
+                    <span>Benchmark (Coming Soon)</span>
+                  </a>
+                </span>
+
+              </div>
+            </div>
+
+            <figure class="teaser-block">
+              <img src="./media/fig/teaser.png" alt="DAPL teaser" />
+              <figcaption class="teaser-caption">
+                <strong>Extrinsic dexterity</strong> leverages <span class="kw-teal">environmental contact</span> to overcome the limitations of <span class="kw-amber">prehensile manipulation</span>. However, achieving such dexterity in <span class="kw-violet">cluttered scenes</span> remains challenging and underexplored, as it requires <span class="kw-orange">selectively</span> exploiting contact among <span class="kw-blue">multiple interacting objects</span> with coupled <span class="kw-rose">dynamics.</span>
+              </figcaption>
+            </figure>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-full-width">
+            <h2 class="title is-3 publication-title dapl-heading has-text-centered">Dynamics-aware Policy Learning (DAPL)</h2>
+            <div class="method-with-caption">
+              <figure class="teaser-block">
+                <img src="./media/fig/method1.png" alt="DAPL method overview" />
+              </figure>
+              <div class="content has-text-justified" style="margin-top:1.5rem;">
+                <p>
+                  <strong>DAPL</strong> use a two-stage learning framework. <strong>Stage 1 (world model pretraining):</strong> the model
+                  takes as input a cropped point cloud augmented with physical attributes (e.g., mass and velocity). A
+                  Transformer-based encoder maps these inputs into a dynamics representation \(f_{dy}\), and a conditional
+                  MLP decoder predicts future per-point positions and velocities conditioned on robot actions (e.g.,
+                  \(a_{1:H_a}\)). <strong>Stage 2 (policy learning):</strong> the pretrained dynamics features \(f_{dy}\)
+                  are fed into an actor-critic policy together with proprioceptive observations and task goals, enabling
+                  efficient policy learning in a physics simulator.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <h2 class="title is-3 dapl-heading has-text-centered">Clutter6D Benchmark</h2>
+
+        <div class="content has-text-justified" style="max-width: min(94vw, 980px); margin: 0.5rem auto 1.5rem;">
+          <p>
+            Clutter6D defines three difficulty tracks based on clutter density: Sparse (4 objects), Moderate (8 objects),
+            and Dense (12 objects). The Sparse track contains 1,024 training scenes, and each track includes 128
+            held-out scenes for evaluation.
+          </p>
+        </div>
+
+        <div style="max-width: min(94vw, 960px); margin: 0.5rem auto 1.5rem;">
+          <div class="box" style="margin-bottom: 1rem;">
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0;">Sparse 🍃</h3>
+            <figure style="margin: 0;">
+              <video autoplay loop muted playsinline preload="metadata" style="width: 100%; height: auto;">
+                <source src="./media/video_web/benchmark/Sparse.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </figure>
+          </div>
+
+          <div class="box" style="margin-bottom: 1rem;">
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0;">Moderate 🌿</h3>
+            <figure style="margin: 0;">
+              <video autoplay loop muted playsinline preload="metadata" style="width: 100%; height: auto;">
+                <source src="./media/video_web/benchmark/Moderate.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </figure>
+          </div>
+
+          <div class="box" style="margin-bottom: 0;">
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0;">Dense 🌳</h3>
+            <figure style="margin: 0;">
+              <video autoplay loop muted playsinline preload="metadata" style="width: 100%; height: auto;">
+                <source src="./media/video_web/benchmark/Dense.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </figure>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <h2 class="title is-3 dapl-heading has-text-centered">Experiments</h2>
+
+        <div class="columns is-variable is-5 is-multiline is-centered" style="margin-top: 1rem; max-width: min(96vw, 1320px); margin-left: auto; margin-right: auto;">
+          <div class="column is-12-mobile is-6-desktop">
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0;">Training Efficiency and Convergence</h3>
+            <figure style="margin: 0; display: flex; justify-content: center;">
+              <img src="./media/fig/training.png" alt="Training efficiency and convergence" style="width: 100%; height: auto;" />
+            </figure>
+          </div>
+          <div class="column is-12-mobile is-6-desktop">
+            <h3 class="title is-5 has-text-centered" style="margin-top: 0;">Benchmark Results</h3>
+            <figure style="margin: 0; display: flex; justify-content: center;">
+              <img src="./media/fig/table1.png" alt="Simulation benchmarking table" style="width: 100%; height: auto;" />
+            </figure>
+          </div>
+        </div>
+
+        <div class="box has-background-white-bis" style="max-width: min(96vw, 1200px); margin: 1.25rem auto 0;">
+          <p>
+            Our method achieves higher sample efficiency than geometric baselines, reaching \(\approx\)$70\%$ success within the first $10^4$ iterations.
+          </p>
+          <p>
+            On Clutter6D, our method consistently outperforms all baselines, achieving 71.88% success in sparse scenes (vs. 46.63% for CORN) and 44.56% in dense scenes where our dynamics-aware method doubles the success rate of the strongest baseline (22.22%) in dense scenes.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body" style="padding-bottom: 1.5rem;">
+      <div class="container is-fullhd">
+        <div class="columns is-centered">
+          <div class="column is-full">
+            <div class="demo-video-box">
+              <h1 class="title is-3 publication-title dapl-heading has-text-centered">Performance Demonstration</h1>
+              <p class="has-text-centered performance-demo-caption">
+                We evaluate our approach extensively in simulation on the Clutter6D benchmark and additionally test our model in real-world cluttered scenes.
+              </p>
+
+              <h2 class="title is-4 has-text-centered performance-demo-heading">Simulation</h2>
+
+              <div class="demo-video-matrix" id="sim-video-matrix" style="margin-bottom: 2rem;"></div>
+
+              <h2 class="title is-4 has-text-centered performance-demo-heading">Real World</h2>
+              <div class="demo-video-matrix" id="real-video-matrix" style="margin-bottom: 2rem;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <h2 class="title is-3 dapl-heading has-text-centered">Visualization of World Model Predictions</h2>
+        <div class="content has-text-justified" style="max-width: min(94vw, 1200px); margin: 0 auto;">
+          <figure>
+            <video id="world-model-prediction-video" autoplay loop muted playsinline preload="metadata" style="width: 100%; height: auto;">
+              <source src="./media/video_web/world_model_prediction.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </figure>
+          <p>
+            We further visualize world model predictions and observe close agreement with ground-truth object motion in
+            the visualization section, confirming the quality of learned dynamics.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-fullhd">
+        <div class="columns is-centered">
+          <div class="column is-full has-text-centered">
+            <h1 class="title is-3 publication-title dapl-heading">Adaptive Behavior</h1>
+            <div style="max-width: min(94vw, 1200px); margin: 0.5rem auto 1.5rem;">
+              <div id="adaptive-video-row" class="columns is-variable is-4 is-multiline is-centered">
+                <div class="column is-6">
+                  <figure style="margin: 0;">
+                    <video autoplay muted playsinline controls preload="metadata" style="width: 100%; height: auto;">
+                      <source src="./media/video_web/adaptive_behavior.mp4" type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  </figure>
+                </div>
+                <div class="column is-6">
+                  <figure style="margin: 0;">
+                    <video autoplay muted playsinline controls preload="metadata" style="width: 100%; height: auto;">
+                      <source src="./media/video_web/adaptive_behavior_2.mp4" type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  </figure>
+                </div>
+              </div>
+            </div>
+            <div class="content has-text-justified" style="margin-top:1.5rem;">
+              <p class="has-text-justified" style="max-width: min(94vw, 1200px); margin: 0.5rem auto 1.5rem;">
+                By varying only object mass under identical configurations, our policy generates adaptive manipulation strategies that ensure successful interaction while minimizing environmental disturbance.
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="hero" style="margin-top: -2.5rem;">
+    <div class="hero-body" style="padding-top: 0.75rem;">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered has-text-centered">
+          <div class="column is-full-width">
+            <h2 class="title is-3 publication-title dapl-heading has-text-centered">Combining Other Strategies</h2>
+            <figure style="max-width: min(92vw, 760px); margin: 0.5rem auto 1.5rem;">
+              <video autoplay loop muted playsinline controls preload="metadata" style="width: 100%; height: auto;">
+                <source src="./media/video_web/application.mp4" type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            </figure>
+            <div class="content has-text-justified" style="margin-top:1.5rem;">
+              <p>
+                Integrated with the VLM planner, our policy empowers Galbot with critical pre-grasping skills. By leveraging extrinsic dexterity to reorient objects in cluttered shelves, it transforms ungraspable states into grasp-friendly configurations, overcoming reachability constraints.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>@misc{zheng2026dapl,
+      title={Emerging Extrinsic Dexterity in Cluttered Scenes via Dynamics-aware Policy Learning},
+      author={Yixin Zheng and Jiangran Lyu and Yifan Zhang and Jiayi Chen and Mi Yan and Yuntian Deng and Xuesong Shi and Xiaoguang Zhao and Yizhou Wang and Zhizheng Zhang and He Wang},
+      year={2026},
+      eprint={2602.04215},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2602.04215}
+}</code></pre>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column">
+          <div class="content has-text-centered">
+            <p>
+              Website template borrowed from <a href="https://github.com/nerfies/nerfies.github.io">NeRFies</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('video').forEach((video) => {
+        video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+      });
+
+      const worldModelVideo = document.getElementById('world-model-prediction-video');
+      if (worldModelVideo instanceof HTMLVideoElement) {
+        worldModelVideo.playbackRate = 0.8;
+
+        let lastTime = 0;
+        worldModelVideo.addEventListener('timeupdate', () => {
+          if (!worldModelVideo.seeking) {
+            lastTime = worldModelVideo.currentTime;
+          }
+        });
+        worldModelVideo.addEventListener('seeking', () => {
+          const duration = worldModelVideo.duration;
+          const isLoopRewind =
+            Number.isFinite(duration) &&
+            lastTime > Math.max(0, duration - 0.5) &&
+            worldModelVideo.currentTime < 0.5;
+
+          if (isLoopRewind) {
+            lastTime = worldModelVideo.currentTime;
+            return;
+          }
+
+          worldModelVideo.currentTime = lastTime;
+        });
+      }
+
+      const simVideoMatrix = document.getElementById('sim-video-matrix');
+      const simVideoBase = './media/video_web/sim';
+      const realVideoMatrix = document.getElementById('real-video-matrix');
+      const realVideoBase = './media/video_web/real';
+      const simVideoInventory = {
+        // Swap left/right order for both baseline and ours
+        ours: [
+          { title: 'Scene 2 (2x) ✅', file: 'ours_offset_overlay.mp4' },
+          { title: 'Scene 1 (2x) ✅', file: 'ours_small_2x.mp4' },
+        ],
+        corn: [
+          { title: 'Scene 2 (2x) ❌', file: 'offset_corn_2x.mp4' },
+          { title: 'Scene 1 (2x) ❌', file: 'corn_small_2x.mp4' },
+        ],
+      };
+
+      const realSceneLabels = {
+        1: 'Avoiding Disturbance',
+        2: 'Traversing Obstacles',
+        3: 'Leveraging Contact',
+      };
+
+      const realVideosByScene = [
+        {
+          scene: 3,
+          items: [
+            { file: '3_airplane_overlay.mp4' },
+            { file: '3_drawer_overlay.mp4' },
+            { file: '3_duck_overlay.mp4' },
+          ],
+        },
+        {
+          scene: 2,
+          items: [
+            { file: '2_dog_overlay.mp4' },
+            { file: '2_keyboard_overlay.mp4' },
+            { file: '2_trunk_overlay.mp4' },
+          ],
+        },
+        {
+          scene: 1,
+          items: [
+            { file: '1_ball_overlay.mp4' },
+            { file: '1_pear_overlay.mp4' },
+            { file: '1_cup_overlay.mp4' },
+          ],
+        },
+      ];
+
+      const setVideoSrc = (video, src) => {
+        video.src = src;
+        video.load();
+      };
+
+      const attachVideoDebugHandlers = (video, label) => {
+        if (video.dataset.debugHandlersAttached === '1') {
+          return;
+        }
+        video.dataset.debugHandlersAttached = '1';
+        video.addEventListener('error', () => {
+          const error = video.error;
+          console.warn('[video] failed to load/decode', {
+            label,
+            src: video.currentSrc || video.src,
+            networkState: video.networkState,
+            readyState: video.readyState,
+            errorCode: error?.code,
+          });
+        });
+      };
+
+      const createSimCard = ({ title, file, policy }) => {
+        const figure = document.createElement('figure');
+        figure.className = 'real-video-item';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'video-with-badge';
+
+        const video = document.createElement('video');
+        video.playsInline = true;
+        video.autoplay = true;
+        video.loop = true;
+        video.controls = true;
+        video.preload = 'metadata';
+        video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+
+        const src = `${simVideoBase}/${file}`;
+        attachVideoDebugHandlers(video, `sim:${policy || 'sim'}:${title || file}`);
+        setVideoSrc(video, src);
+
+        video.addEventListener('canplay', () => {
+          if (video.paused) {
+            video.play().catch(() => {});
+          }
+        });
+
+        const badge = document.createElement('span');
+        badge.className = 'video-badge-2x';
+        badge.textContent = '2×';
+
+        wrapper.appendChild(video);
+        wrapper.appendChild(badge);
+        figure.appendChild(wrapper);
+        return figure;
+      };
+
+      const renderSimGrid = () => {
+        if (!simVideoMatrix) {
+          return;
+        }
+        simVideoMatrix.innerHTML = '';
+
+        const sceneTitles = ['Scene Stability', 'Functional Dexterity'];
+        const sceneCaptions = [
+          'The static geometric baseline (CORN) triggers excessive contact chains, leading to significant environment disturbance. In contrast, our dynamics-aware policy enables selective and intentional interactions, successfully reorienting the target while preserving scene stability.',
+          'Lacking dynamics reasoning, the baseline becomes stuck or trapped by complex geometric constraints. Our policy leverages environmental contacts as functional anchors, demonstrating emergent extrinsic dexterity to complete the task in dense clutter.',
+        ];
+        const policyLabels = [
+          { key: 'corn', label: 'CORN(Baseline) ❌' },
+          { key: 'ours', label: 'Ours ✅' },
+        ];
+
+        for (let sceneIdx = 0; sceneIdx < 2; sceneIdx++) {
+          const row = document.createElement('div');
+          row.className = 'real-scene-row box';
+
+          const rowTitle = document.createElement('h3');
+          rowTitle.className = 'real-scene-row-title';
+          rowTitle.textContent = sceneTitles[sceneIdx];
+          row.appendChild(rowTitle);
+
+          const grid = document.createElement('div');
+          grid.className = 'real-scene-videos';
+
+          policyLabels.forEach(({ key, label }) => {
+            const item = simVideoInventory[key][sceneIdx];
+            const cell = document.createElement('div');
+            cell.className = 'sim-scene-cell';
+            const cellTitle = document.createElement('h4');
+            cellTitle.className = 'real-scene-row-title';
+            cellTitle.style.fontSize = '0.95rem';
+            cellTitle.style.marginBottom = '0.5rem';
+            cellTitle.textContent = label;
+            cell.appendChild(cellTitle);
+            cell.appendChild(createSimCard({ ...item, policy: key }));
+            grid.appendChild(cell);
+          });
+
+          row.appendChild(grid);
+
+          const caption = document.createElement('p');
+          caption.className = 'has-text-justified';
+          caption.style.marginTop = '0.75rem';
+          caption.style.fontSize = '1rem';
+          caption.textContent = sceneCaptions[sceneIdx];
+          row.appendChild(caption);
+
+          simVideoMatrix.appendChild(row);
+        }
+      };
+
+      const createRealCard = ({ title, file, badgeText = '2×', playbackRate = 2 }) => {
+        const figure = document.createElement('figure');
+        figure.className = 'real-video-item';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'video-with-badge';
+
+        const video = document.createElement('video');
+        video.playsInline = true;
+        video.autoplay = true;
+        video.loop = true;
+        video.controls = true;
+        video.preload = 'metadata';
+        video.muted = true;
+        video.defaultMuted = true;
+        video.volume = 0;
+        const src = `${realVideoBase}/${file}`;
+        attachVideoDebugHandlers(video, `real:${title || file}`);
+        setVideoSrc(video, src);
+
+        const applyRealPlaybackRate = () => {
+          video.playbackRate = playbackRate;
+        };
+        video.addEventListener('loadedmetadata', applyRealPlaybackRate);
+        video.addEventListener('canplay', applyRealPlaybackRate);
+        video.addEventListener('playing', applyRealPlaybackRate);
+        video.addEventListener('canplay', () => {
+          if (video.paused) {
+            video.play().catch(() => {});
+          }
+        });
+
+        const badge = document.createElement('span');
+        badge.className = 'video-badge-2x';
+        badge.textContent = badgeText;
+
+        wrapper.appendChild(video);
+        wrapper.appendChild(badge);
+        figure.appendChild(wrapper);
+        return figure;
+      };
+
+      const setupSynchronizedReplayForRow = (videos) => {
+        if (videos.length !== 2) {
+          return;
+        }
+
+        const endedState = [false, false];
+        let restarting = false;
+        const pauseBeforeReplayMs = 2000;
+
+        videos.forEach((video) => {
+          video.loop = false;
+        });
+
+        videos.forEach((video, index) => {
+          video.addEventListener('ended', () => {
+            endedState[index] = true;
+            if (!endedState.every(Boolean) || restarting) {
+              return;
+            }
+
+            restarting = true;
+            setTimeout(() => {
+              videos.forEach((item) => {
+                item.currentTime = 0;
+              });
+              videos.forEach((item) => {
+                item.play().catch(() => {});
+              });
+              endedState[0] = false;
+              endedState[1] = false;
+              restarting = false;
+            }, pauseBeforeReplayMs);
+          });
+        });
+      };
+
+      const setupTwoVideoRowsSynchronizedReplay = () => {
+        document.querySelectorAll('.real-scene-videos').forEach((row) => {
+          const videos = Array.from(row.querySelectorAll('video'));
+          setupSynchronizedReplayForRow(videos);
+        });
+
+        const adaptiveRow = document.getElementById('adaptive-video-row');
+        if (adaptiveRow) {
+          const videos = Array.from(adaptiveRow.querySelectorAll('video'));
+          setupSynchronizedReplayForRow(videos);
+        }
+      };
+
+      const renderRealGrid = () => {
+        if (!realVideoMatrix) {
+          return;
+        }
+        realVideoMatrix.innerHTML = '';
+        realVideosByScene.forEach(({ scene, items }) => {
+          const row = document.createElement('div');
+          row.className = 'real-scene-row box';
+
+          const label = realSceneLabels[scene] ?? `Scene ${scene}`;
+          const rowTitle = document.createElement('h3');
+          rowTitle.className = 'real-scene-row-title';
+          rowTitle.textContent = label;
+          row.appendChild(rowTitle);
+
+          const grid = document.createElement('div');
+          grid.className = 'real-scene-videos';
+
+          items.forEach(({ file }, index) => {
+            const isLastInRow = index === items.length - 1;
+            grid.appendChild(createRealCard({
+              title: label,
+              file,
+              badgeText: isLastInRow ? '4×' : '2×',
+              playbackRate: isLastInRow ? 4 : 2,
+            }));
+          });
+
+          row.appendChild(grid);
+          realVideoMatrix.appendChild(row);
+        });
+      };
+
+      renderSimGrid();
+      renderRealGrid();
+      setupTwoVideoRowsSynchronizedReplay();
+    });
+  </script>
+
+</body>
+
+</html>
